@@ -3,14 +3,22 @@ package wdsr.exercise3.client;
 import java.util.List;
 import java.util.Set;
 
+import javax.net.ssl.SSLEngineResult.Status;
+import javax.print.attribute.standard.Media;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import wdsr.exercise3.model.Product;
 import wdsr.exercise3.model.ProductType;
 
 public class ProductService extends RestClientBase {
+	private final String path = "products";
 	protected ProductService(final String serverHost, final int serverPort, final Client client) {
 		super(serverHost, serverPort, client);
 	}
@@ -21,8 +29,12 @@ public class ProductService extends RestClientBase {
 	 * @return A list of found products - possibly empty, never null.
 	 */
 	public List<Product> retrieveProducts(Set<ProductType> types) {
-		// TODO
-		return null;
+		WebTarget webTarget = baseTarget.path(path);
+		List<Product> response = webTarget.queryParam("type", types.toArray())
+				.request(MediaType.APPLICATION_JSON)
+				.get(new GenericType<List<Product>>() {});
+		return response;
+		
 	}
 	
 	/**
@@ -30,8 +42,10 @@ public class ProductService extends RestClientBase {
 	 * @return A list of all products - possibly empty, never null.
 	 */
 	public List<Product> retrieveAllProducts() {
-		// TODO
-		return null;
+		WebTarget webTarget = baseTarget.path(path);
+		List<Product> response = webTarget.request(MediaType.APPLICATION_JSON)
+				.get(new GenericType<List<Product>>() {});
+		return response;
 	}
 	
 	/**
@@ -41,9 +55,15 @@ public class ProductService extends RestClientBase {
 	 * @throws NotFoundException if no product found for the given ID.
 	 */
 	public Product retrieveProduct(int id) {
-		// TODO
-		return null;
-	}	
+		
+		WebTarget webTarget = baseTarget.path(path +"/"+ String.valueOf(id));
+		Response response = webTarget.request(MediaType.APPLICATION_JSON).get(Response.class);
+		if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+			 			throw new NotFoundException();
+			 	}
+		return response.readEntity(Product.class);
+		
+	}
 	
 	/**
 	 * Creates a new product on the server.
@@ -52,8 +72,13 @@ public class ProductService extends RestClientBase {
 	 * @throws WebApplicationException if request to the server failed
 	 */
 	public int storeNewProduct(Product product) {
-		// TODO
-		return 0;
+		WebTarget webTarget = baseTarget.path(path);
+		Response response = webTarget.request(MediaType.APPLICATION_JSON).
+				post(Entity.json(product),Response.class);
+		if(response.getStatus() != 201){
+			throw new WebApplicationException();
+		}
+		return response.readEntity(Product.class).getId();
 	}
 	
 	/**
@@ -62,16 +87,25 @@ public class ProductService extends RestClientBase {
 	 * @throws NotFoundException if no product found for the given ID.
 	 */
 	public void updateProduct(Product product) {
-		// TODO
+		WebTarget webTarget = baseTarget.path(path+"/"+String.valueOf(product.getId()));
+		Response response = webTarget.request(MediaType.APPLICATION_JSON).
+				put(Entity.json(product),Response.class);
+		if(response.getStatus() == Response.Status.NOT_FOUND.getStatusCode()){
+			throw new NotFoundException();
+		}
 	}
-
-	
 	/**
 	 * Deletes the given product.
 	 * @param product Product to be deleted. Its ID must identify an existing resource.
 	 * @throws NotFoundException if no product found for the given ID.
 	 */
 	public void deleteProduct(Product product) {
-		// TODO
+		                          
+		WebTarget webTarget = baseTarget.path(path+"/"+String.valueOf(product.getId()));
+		Response response = webTarget.request(MediaType.APPLICATION_JSON).
+				delete(Response.class);
+		if(response.getStatus() == Response.Status.NOT_FOUND.getStatusCode()){
+			throw new NotFoundException();
+		}
 	}
 }
